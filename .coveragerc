@@ -1,0 +1,15 @@
+[run]
+branch = True
+source = redis_property
+
+[report]
+exclude_lines =
+    if self.debug:
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise
+ignore_errors = False
+omit =
+    tests/*
