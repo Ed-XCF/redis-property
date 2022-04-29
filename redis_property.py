@@ -1,19 +1,18 @@
 import json
 from threading import RLock
-from typing import Callable, Optional
 
 from redis import Redis, RedisError
 
 __all__ = ["redis_property"]
 
-_redis_cli: Optional[Redis] = None
+_redis_cli = None
 
 
 def _default_key(obj, func):
     return type(obj).__name__ + func.__name__
 
 
-def configure(url: str, default_key: Callable = None):
+def configure(url: str, default_key=None):
     global _redis_cli
     _redis_cli = Redis.from_url(url)
 

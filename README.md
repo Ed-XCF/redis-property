@@ -1,5 +1,5 @@
 # redis-property
-A decorator for caching properties in redis. Inspired from [cached-property](https://github.com/pydanny/cached-property)
+A decorator for caching properties in redis. Inspired by [cached-property](https://github.com/pydanny/cached-property)
 
 ## Installation
 ```shell
@@ -14,7 +14,7 @@ Setup redis_property
 import redis_property
 
 redis_property.configure(
-    "redis://:111@wow:6379/0", 
+    "redis://:123456@example:6379/0", 
     lambda o, f: f"{type(o).__name__}:{o.id}:{f.__name__}"
 )
 ```
@@ -41,7 +41,7 @@ invalidating the cache
 del something.name
 ```
 
-use it with cached-property
+work with cached-property
 
 ```python
 from cached_property import cached_property
