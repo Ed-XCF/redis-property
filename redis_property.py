@@ -13,7 +13,7 @@ def _default_key(obj, func):
     return type(obj).__name__ + func.__name__
 
 
-def configure(url, *, default_key=None, default_ttl=_default_ttl):
+def configure(url, default_key=None, default_ttl=_default_ttl):
     global _redis_cli
     _redis_cli = Redis.from_url(url)
 
