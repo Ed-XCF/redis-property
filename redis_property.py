@@ -6,15 +6,19 @@ from redis import Redis, RedisError
 __all__ = ["redis_property"]
 
 _redis_cli = None
+_default_ttl = 24 * 60 * 60
 
 
 def _default_key(obj, func):
     return type(obj).__name__ + func.__name__
 
 
-def configure(url: str, default_key=None):
+def configure(url, *, default_key=None, default_ttl=_default_ttl):
     global _redis_cli
     _redis_cli = Redis.from_url(url)
+
+    global _default_ttl
+    _default_ttl = default_ttl
 
     if default_key is not None:
         global _default_key  # noqa
@@ -27,7 +31,7 @@ def assert_redis_cli_exists():
 
 def safe_read(key):
     try:
-        value: bytes = _redis_cli.get(key)
+        value = _redis_cli.get(key)
     except RedisError:
         return
     else:
@@ -52,11 +56,11 @@ def safe_remove(key):
 
 
 class redis_property:  # noqa
-    def __init__(self, seconds=24 * 60 * 60, key=None):
+    def __init__(self, seconds, key=None):
         assert_redis_cli_exists()
 
         if callable(seconds):
-            self.func, self.ttl = seconds, None
+            self.func, self.ttl = seconds, _default_ttl
         else:
             self.func, self.ttl = None, seconds
 
