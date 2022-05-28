@@ -6,6 +6,7 @@ python:
 branches:
   only:
     - main
+services: redis-server
 cache: pip
 install: make init
 script: make test
