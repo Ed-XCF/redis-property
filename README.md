@@ -27,7 +27,7 @@ from redis_property import redis_property
 class Something:
     id = 1
     
-    @redis_property(seconds=10)  # 24h by default
+    @redis_property(10)  # 24h by default
     def name(self):
         return 1
 
