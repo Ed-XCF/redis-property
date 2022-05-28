@@ -1,4 +1,9 @@
 # redis-property
+![GitHub](https://img.shields.io/github/license/Ed-XCF/redis-property)
+[![Build Status](https://app.travis-ci.com/Ed-XCF/redis-property.svg?branch=main)](https://app.travis-ci.com/Ed-XCF/redis-property)
+[![codecov](https://codecov.io/gh/Ed-XCF/redis-property/branch/main/graph/badge.svg?token=J3HnAigB4J)](undefined)
+![PyPI](https://img.shields.io/pypi/v/redis-property)
+
 A decorator for caching properties in redis. Inspired by [cached-property](https://github.com/pydanny/cached-property)
 
 ## Installation

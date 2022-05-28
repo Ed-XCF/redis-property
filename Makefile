@@ -1,12 +1,11 @@
 init:
 	python3 -m venv venv
 	. venv/bin/activate \
-	&& pip3 install -r requirements.txt \
 	&& pip3 install wheel \
-	&& pip3 install coverage pytest
+	&& pip3 install -r requirements-dev.txt
 
 test:
-	coverage run -m pytest -v
+	coverage run -m pytest
 
 release:
 	pip3 install -r requirements.txt

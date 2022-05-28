@@ -1,5 +1,7 @@
 import random
 
+from cached_property import cached_property
+
 import redis_property as redis_property_lib
 from redis_property import redis_property
 
@@ -9,20 +11,37 @@ redis_property_lib.configure(
 )
 
 
-def test_redis_property():
-    class Adder:
-        id = random.randint(1, 1000)
+class TestRedisProperty:
+    def test_work_alone(self):
+        class Adder:
+            id = random.randint(1, 1000)
 
-        def __init__(self):
-            self.times = 1
+            def __init__(self):
+                self.times = 1
 
-        @redis_property(1)
-        def number(self):
-            self.times += 1
-            return self.times
+            @redis_property(1)
+            def number(self):
+                self.times += 1
+                return self.times
 
-    adder = Adder()
-    assert adder.number == adder.number
-    del adder.number
-    assert adder.number == 3
-    del adder.number
+        adder = Adder()
+        assert adder.number == adder.number
+        del adder.number
+        assert adder.number == 3
+        del adder.number
+
+    def test_work_with_cached_property(self):
+        class Adder:
+            id = random.randint(1, 1000)
+
+            def __init__(self):
+                self.times = 1
+
+            @cached_property
+            @redis_property(1)
+            def number(self):
+                self.times += 1
+                return self.times
+
+        adder = Adder()
+        assert adder.number == adder.number
