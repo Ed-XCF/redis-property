@@ -7,13 +7,14 @@ __all__ = ["redis_property"]
 
 _redis_cli = None
 _default_ttl = 24 * 60 * 60
+_disable = False
 
 
 def _default_key(obj, func):
     return type(obj).__name__ + func.__name__
 
 
-def configure(url, default_key=None, default_ttl=_default_ttl):
+def configure(url, default_key=None, default_ttl=_default_ttl, disable=_disable):
     global _redis_cli
     _redis_cli = Redis.from_url(url)
 
@@ -23,6 +24,9 @@ def configure(url, default_key=None, default_ttl=_default_ttl):
     if default_key is not None:
         global _default_key  # noqa
         _default_key = default_key
+    
+    global _disable
+    _disable = disable
 
 
 def assert_redis_cli_exists():
@@ -70,6 +74,9 @@ class redis_property:  # noqa
 
     def __call__(self, func):
         if self.func is not None:
+            if _disable:
+                return self.func(func)
+            
             return self.__get__(func, None)
 
         self.func = func
@@ -89,6 +96,9 @@ class redis_property:  # noqa
             setattr(self, member_name, value)
 
     def __get__(self, instance, _):
+        if _disable:
+            return self.func(instance)
+        
         if instance is None:
             return self
 
