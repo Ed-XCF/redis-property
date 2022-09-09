@@ -7,13 +7,31 @@ from redis_property import redis_property
 
 
 class TestRedisProperty:
-    def setUp(self):
+    def setup_class(self):
         redis_property_lib.configure(
             "redis://:@127.0.0.1:6379/0",
             lambda o, f: f"{type(o).__name__}:{o.id}:{f.__name__}"
         )
 
     def test_work_alone(self):
+        class Adder:
+            id = random.randint(1, 1000)
+
+            def __init__(self):
+                self.times = 1
+
+            @redis_property
+            def number(self):
+                self.times += 1
+                return self.times
+
+        adder = Adder()
+        assert adder.number == adder.number
+        del adder.number
+        assert adder.number == 3
+        del adder.number
+        
+    def test_work_alone_with_ttl(self):
         class Adder:
             id = random.randint(1, 1000)
 
@@ -49,7 +67,7 @@ class TestRedisProperty:
 
 
 class TestDisabledRedisProperty:
-    def setUp(self):
+    def setup_class(self):
         redis_property_lib.configure(
             "redis://:@127.0.0.1:6379/0",
             lambda o, f: f"{type(o).__name__}:{o.id}:{f.__name__}",
@@ -57,6 +75,24 @@ class TestDisabledRedisProperty:
         )
 
     def test_work_alone(self):
+        class Adder:
+            id = random.randint(1, 1000)
+
+            def __init__(self):
+                self.times = 1
+
+            @redis_property
+            def number(self):
+                self.times += 1
+                return self.times
+
+        adder = Adder()
+        assert adder.number != adder.number
+        del adder.number
+        assert adder.number == 4
+        del adder.number
+        
+    def test_work_alone_with_ttl(self):
         class Adder:
             id = random.randint(1, 1000)
 

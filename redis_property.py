@@ -75,7 +75,7 @@ class redis_property:  # noqa
     def __call__(self, func):
         if self.func is not None:
             if _disable:
-                return self.func(instance)
+                return self.func(func)
             
             return self.__get__(func, None)
 
@@ -96,6 +96,9 @@ class redis_property:  # noqa
             setattr(self, member_name, value)
 
     def __get__(self, instance, _):
+        if _disable:
+            return self.func(instance)
+        
         if instance is None:
             return self
 
