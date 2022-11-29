@@ -1,32 +1,37 @@
-import json
 from threading import RLock
+from contextvars import ContextVar
+from datetime import datetime
 
+import orjson
 from redis import Redis, RedisError
 
-__all__ = ["redis_property"]
+__all__ = ["redis_property", "cache_ttl", "cache_disable"]
 
 _redis_cli = None
-_default_ttl = 24 * 60 * 60
-_disable = False
+_default_cache_ttl = 24 * 60 * 60
+_default_cache_disable = False
+
+cache_ttl: ContextVar[int] = ContextVar('cache_ttl', default=_default_cache_ttl)
+cache_disable: ContextVar[bool] = ContextVar('cache_disable', default=_default_cache_disable)
 
 
-def _default_key(obj, func):
+def _key_maker(obj, func):
     return type(obj).__name__ + func.__name__
 
 
-def configure(url, default_key=None, default_ttl=_default_ttl, disable=_disable):
+def configure(url, *, key_maker=None, ttl=None, disable=None):
     global _redis_cli
     _redis_cli = Redis.from_url(url)
 
-    global _default_ttl
-    _default_ttl = default_ttl
+    if key_maker is not None:
+        global _key_maker  # noqa
+        _key_maker = key_maker
 
-    if default_key is not None:
-        global _default_key  # noqa
-        _default_key = default_key
-    
-    global _disable
-    _disable = disable
+    if ttl is not None:
+        cache_ttl.set(ttl)
+
+    if disable is not None:
+        cache_disable.set(disable)
 
 
 def assert_redis_cli_exists():
@@ -42,7 +47,7 @@ def safe_read(key):
         if value is None:
             return
 
-        return value.decode("utf-8")
+        return value.decode()
 
 
 def safe_write(key, value, ttl):
@@ -64,17 +69,17 @@ class redis_property:  # noqa
         assert_redis_cli_exists()
 
         if callable(seconds):
-            self.func, self.ttl = seconds, _default_ttl
+            self.func, self.ttl = seconds, cache_ttl.get()
         else:
             self.func, self.ttl = None, seconds
 
-        self._key = key or _default_key
+        self._key = key or _key_maker
         self._copy_func_info()
         self.lock = RLock()
 
     def __call__(self, func):
         if self.func is not None:
-            if _disable:
+            if cache_disable.get():
                 return self.func(func)
             
             return self.__get__(func, None)
@@ -96,7 +101,7 @@ class redis_property:  # noqa
             setattr(self, member_name, value)
 
     def __get__(self, instance, _):
-        if _disable:
+        if cache_disable.get():
             return self.func(instance)
         
         if instance is None:
@@ -119,9 +124,18 @@ class redis_property:  # noqa
     def __delete__(self, instance):
         key = self._make_key(instance)
         safe_remove(key)
+        
+    @staticmethod
+    def _dumps(value):
+        return orjson.dumps(value).decode()
 
-    _dumps = staticmethod(json.dumps)
-    _loads = staticmethod(json.loads)
+    @staticmethod
+    def _loads(value):
+        data = orjson.loads(value)
+        try:
+            return datetime.fromisoformat(data)
+        except (TypeError, ValueError):
+            return data
 
     def _make_key(self, obj):
         return str(self._key(obj, self.func) if callable(self._key) else self._key)
