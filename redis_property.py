@@ -1,3 +1,4 @@
+import functools
 from threading import RLock
 from contextvars import ContextVar
 from datetime import datetime
@@ -5,7 +6,7 @@ from datetime import datetime
 import orjson
 from redis import Redis, RedisError
 
-__all__ = ["redis_property", "cache_ttl", "cache_disable"]
+__all__ = ["redis_property", "cache_ttl", "cache_disable", "no_cache"]
 
 _redis_cli = None
 _default_cache_ttl = 24 * 60 * 60
@@ -139,3 +140,15 @@ class redis_property:  # noqa
 
     def _make_key(self, obj):
         return str(self._key(obj, self.func) if callable(self._key) else self._key)
+
+
+def no_cache(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        token = cache_disable.set(True)
+        try:
+            return func(*args, **kwargs)
+        finally:
+            cache_disable.reset(token)
+
+    return wrapper
