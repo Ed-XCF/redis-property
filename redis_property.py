@@ -6,7 +6,7 @@ from datetime import datetime
 import orjson
 from redis import Redis, RedisError
 
-__all__ = ["redis_property", "cache_ttl", "cache_disable", "no_cache"]
+__all__ = ["redis_property", "cache_ttl", "cache_disable", "no_cache", "use_cache"]
 
 _redis_cli = None
 _default_cache_ttl = 24 * 60 * 60
@@ -146,6 +146,18 @@ def no_cache(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         token = cache_disable.set(True)
+        try:
+            return func(*args, **kwargs)
+        finally:
+            cache_disable.reset(token)
+
+    return wrapper
+
+
+def use_cache(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        token = cache_disable.set(False)
         try:
             return func(*args, **kwargs)
         finally:
