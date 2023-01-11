@@ -102,25 +102,23 @@ class redis_property:  # noqa
             setattr(self, member_name, value)
 
     def __get__(self, instance, _):
-        if cache_disable.get():
-            return self.func(instance)
-        
         if instance is None:
             return self
 
         key = self._make_key(instance)
         value = safe_read(key)
-        if value is not None:
-            return self._loads(value)
+        if value is None:
+            with self.lock:
+                value = safe_read(key)
+                if value is None:
+                    value = self.func(instance)
+                    safe_write(key, self._dumps(value), self.ttl)
+                    return value
 
-        with self.lock:
-            value = safe_read(key)
-            if value is not None:
-                return self._loads(value)
+        if cache_disable.get():
+            return self.func(instance)
 
-            value = self.func(instance)
-            safe_write(key, self._dumps(value), self.ttl)
-            return value
+        return self._loads(value)
 
     def __delete__(self, instance):
         key = self._make_key(instance)
