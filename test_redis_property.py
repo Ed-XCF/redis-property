@@ -100,7 +100,7 @@ class TestRedisPropertyWithContextVar:
         del adder.number
         assert adder.number == 6
         del adder.number
-        
+
         cache_disable.set(False)
         assert adder.number == adder.number
         del adder.number
