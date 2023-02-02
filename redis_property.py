@@ -1,10 +1,9 @@
 import functools
-from threading import RLock
 from contextvars import ContextVar
 from datetime import datetime
 
 import orjson
-from redis import Redis, RedisError
+from redis import Redis, RedisError, WatchError
 
 __all__ = ["redis_property", "cache_ttl", "cache_disable", "no_cache", "use_cache"]
 
@@ -39,9 +38,10 @@ def assert_redis_cli_exists():
     assert _redis_cli is not None, "Redis url has not been configured"
 
 
-def safe_read(key):
+def safe_read(key, cli=None):
+    cli = cli or _redis_cli
     try:
-        value = _redis_cli.get(key)
+        value = cli.get(key)
     except RedisError:
         return
     else:
@@ -51,16 +51,18 @@ def safe_read(key):
         return value.decode()
 
 
-def safe_write(key, value, ttl):
+def safe_write(key, value, ttl, cli=None):
+    cli = cli or _redis_cli
     try:
-        return _redis_cli.set(key, value, ex=ttl, nx=True)
+        return cli.set(key, value, ex=ttl, nx=True)
     except RedisError:
         return
 
 
-def safe_remove(key):
+def safe_remove(key, cli=None):
+    cli = cli or _redis_cli
     try:
-        return _redis_cli.delete(key)
+        return cli.delete(key)
     except RedisError:
         return
 
@@ -76,7 +78,6 @@ class redis_property:  # noqa
 
         self._key = key or _key_maker
         self._copy_func_info()
-        self.lock = RLock()
 
     def __call__(self, func):
         if self.func is not None:
@@ -108,15 +109,24 @@ class redis_property:  # noqa
         key = self._make_key(instance)
         value = safe_read(key)
         if value is None:
-            with self.lock:
-                value = safe_read(key)
-                if value is None:
-                    value = self.func(instance)
-                    safe_write(key, self._dumps(value), self.ttl)
-                    return value
+            with _redis_cli.pipeline() as pipeline:
+                while True:
+                    try:
+                        pipeline.watch(key)
+                        value = safe_read(key, pipeline)
+                        if value is None:
+                            value = self.func(instance)
+                            pipeline.multi()
+                            safe_write(key, self._dumps(value), self.ttl, pipeline)
+                            pipeline.execute()
+                            return value
+                    except WatchError:
+                        continue
 
         if cache_disable.get():
-            return self.func(instance)
+            value = self.func(instance)
+            safe_write(key, self._dumps(value), self.ttl)
+            return value
 
         return self._loads(value)
 
