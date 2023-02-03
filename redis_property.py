@@ -109,19 +109,16 @@ class redis_property:  # noqa
         key = self._make_key(instance)
         value = safe_read(key)
         if value is None:
-            with _redis_cli.pipeline() as pipeline:
-                while True:
-                    try:
-                        pipeline.watch(key)
-                        value = safe_read(key, pipeline)
-                        if value is None:
-                            value = self.func(instance)
-                            pipeline.multi()
-                            safe_write(key, self._dumps(value), self.ttl, pipeline)
-                            pipeline.execute()
-                            return value
-                    except WatchError:
-                        continue
+            while True:
+                try:
+                    _redis_cli.watch(key)
+                    value = safe_read(key)
+                    if value is None:
+                        value = self.func(instance)
+                        safe_write(key, self._dumps(value), self.ttl)
+                        return value
+                except WatchError:
+                    continue
 
         if cache_disable.get():
             value = self.func(instance)
