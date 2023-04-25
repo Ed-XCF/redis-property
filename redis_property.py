@@ -162,10 +162,10 @@ def no_cache(func):
 def use_cache(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        token = cache_disable.set(False)
+        cache_disable.set(False)
         try:
             return func(*args, **kwargs)
         finally:
-            cache_disable.reset(token)
+            cache_disable.set(_default_cache_disable)
 
     return wrapper
